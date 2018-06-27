@@ -8,6 +8,8 @@ import java.net.HttpURLConnection;
  * A class representing a client that talks to an API. In this implementation,
  * there is no authentication or paging.
  *
+ * It is up to the ATS to modify this class to work with their API.
+ *
  * Written by George Ludwig, Solutions Architect, Global Alliances at Indeed
  * June 2018
  */
@@ -40,7 +42,6 @@ public class ApiClient {
             builder.append(buff);
         }
         urlConnection.disconnect();
-        // strip start/end whitespace
         String result = builder.toString();
         return result;
     }
