@@ -43,6 +43,8 @@ public class ApiClient {
         }
         urlConnection.disconnect();
         String result = builder.toString();
+        // TODO if the String result need to be cleaned, i.e. header/footer removal etc.
+        // it would be done here before returning
         return result;
     }
 

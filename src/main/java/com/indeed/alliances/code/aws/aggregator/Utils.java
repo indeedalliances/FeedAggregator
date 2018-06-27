@@ -9,7 +9,10 @@ import com.amazonaws.services.simpleemail.model.Message;
 import com.amazonaws.services.simpleemail.model.SendEmailRequest;
 
 /**
- * Utility class.
+ * Utility class for sending emails. Note that AWS's Simple Email Service is region-dependent,
+ * and is not available in all regions. Both the FROM and TO email addresses must be confirmed
+ * via the SES Identity Management console before the emails can be sent.
+ *
  *
  * Written by George Ludwig, Solutions Architect, Global Alliances at Indeed
  * June 2018

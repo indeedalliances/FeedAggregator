@@ -6,6 +6,8 @@ package com.indeed.alliances.code.aws.aggregator;
  * access an API endpoint.
  *
  * In this case, there is no authentication information, page size, etc.
+ * TODO if the ATS implementation requires any additional information in order
+ * to process an API request, those fields nbeed to be added here
  *
  * Written by George Ludwig, Solutions Architect, Global Alliances at Indeed
  * June 2018

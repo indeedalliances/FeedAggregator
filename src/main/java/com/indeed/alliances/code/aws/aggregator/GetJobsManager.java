@@ -6,7 +6,8 @@ import java.io.FileWriter;
 
 /**
  * A thin wrapper around the ApiClient that handles serialization.
- * If the ApiClient required pagination, that would be handled here.
+ * TODO If the ApiClient requires pagination, paging through the results
+ * would be handled in a loop surrounding the try/catch block.
  *
  * Written by George Ludwig, Solutions Architect, Global Alliances at Indeed
  * June 2018
