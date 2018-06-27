@@ -1,0 +1,26 @@
+[
+  {
+    "name" : "Endpoint One",
+    "url" : "https://github.com/indeedalliances/DataAggregator/testdata/one.xml",
+    "xml_output_directory" : "/mnt/efs",
+    "xml_output_filename" : "one.xml",
+    "error_email_from_address" : "yourname@yourdomain.com",
+    "error_email_list" : "yourname@yourdomain.com,anothername@yourdomain.com"
+  },
+  {
+    "name" : "Endpoint Two",
+    "url" : "https://github.com/indeedalliances/DataAggregator/testdata/two.xml",
+    "xml_output_directory" : "/mnt/efs",
+    "xml_output_filename" : "two.xml",
+    "error_email_from_address" : "yourname@yourdomain.com",
+    "error_email_list" : "yourname@yourdomain.com,anothername@yourdomain.com"
+  },
+  {
+    "name" : "Endpoint Three",
+    "url" : "https://github.com/indeedalliances/DataAggregator/testdata/three.xml",
+    "xml_output_directory" : "/mnt/efs",
+    "xml_output_filename" : "three.xml",
+    "error_email_from_address" : "yourname@yourdomain.com",
+    "error_email_list" : "yourname@yourdomain.com,anothername@yourdomain.com"
+  },
+]
