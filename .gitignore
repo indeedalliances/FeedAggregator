@@ -1,6 +1,13 @@
 # Compiled class file
 *.class
 
+.DS_Store
+.gitignore.swp
+.idea/
+DataAggregator.iml
+lib/
+target/
+
 # Log file
 *.log
 
