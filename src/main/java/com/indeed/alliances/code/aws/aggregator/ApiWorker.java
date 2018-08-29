@@ -2,6 +2,12 @@ package com.indeed.alliances.code.aws.aggregator;
 
 import java.util.Map;
 
+/**
+ * A runnable class for multi=threading the data extraction
+ *
+ * Written by George Ludwig, Solutions Architect, Global Alliances at Indeed
+ * August 2018
+ */
 public class ApiWorker implements Runnable {
 
     private ApiConfig config;
