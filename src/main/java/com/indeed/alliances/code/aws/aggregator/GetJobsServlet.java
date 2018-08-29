@@ -9,10 +9,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -122,13 +119,27 @@ public class GetJobsServlet extends HttpServlet {
                 throw new ServletException("unable to copy time-stamped file");
             }
             // clear old files
+            // sort file list
             File dir = new File(Constants.XML_OUTPUT_DIRECTORY);
             File files[] = dir.listFiles();
-            Arrays.sort(files, NameFileComparator.NAME_INSENSITIVE_REVERSE);
+            Arrays.sort(files, new Comparator<File>() {
+                public int compare(File o1, File o2) {
+                    if ((o1).lastModified() > (o2).lastModified()) {
+                        return -1;
+                    } else if ((o1).lastModified() < (o2).lastModified()) {
+                        return +1;
+                    } else {
+                        return 0;
+                    }
+                }
+            });
+            // Arrays.sort(files, NameFileComparator.NAME_INSENSITIVE_REVERSE);
             int preserveFileCount = 20;
             String pfcString = System.getenv("preserve_file_count");
             if (pfcString != null)
                 preserveFileCount = Integer.parseInt(pfcString);
+            // make sure we keep the latest working files as well as pre-DT-stamped file
+            preserveFileCount += configs.length + 1;
             for (int i = files.length - 1; i > (preserveFileCount - 1); i--) {
                 File f = files[i];
                 try {
