@@ -10,6 +10,12 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import com.google.gson.Gson;
 import org.apache.commons.io.comparator.NameFileComparator;
 
@@ -30,7 +36,7 @@ public class GetJobsServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request,
-                          HttpServletResponse response) throws ServletException, IOException {
+                         HttpServletResponse response) throws ServletException, IOException {
         // ensure that we can't run more than one at a time
         synchronized(sem) {
             // mark start
@@ -40,23 +46,39 @@ public class GetJobsServlet extends HttpServlet {
             FileReader fr = new FileReader(apiFile);
             Gson gson = new Gson();
             ApiConfig[] configs = gson.fromJson(fr, ApiConfig[].class);
+            // initialize the exception map, for holding exceptions when getting feeds
+            Map<ApiConfig, Exception> exceptionMap = new HashMap<>();
+            // initialize threadpool
+            int tpc = 4;
+            try {
+                tpc = Integer.parseInt(System.getenv("threadpool_count"));
+            } catch (Exception e) {
+                // dud
+            }
+            ExecutorService executor = Executors.newFixedThreadPool(tpc);
             // get jobs for each config
             for (int i = 0; i < configs.length; i++) {
                 ApiConfig getConfig = null;
-                try {
-                    getConfig = configs[i];
-                    // get the jobs
-                    GetJobsManager.getJobs(getConfig);
-                } catch (Exception e) {
-                    // send notification email
+                getConfig = configs[i];
+                // get the jobs
+                Runnable worker = new ApiWorker(getConfig,exceptionMap);
+                executor.execute(worker);
+            }
+            // shutdown threadpool
+            executor.shutdown();
+            while (!executor.isTerminated()) {
+            }
+            // send notification email, if exceptions occurred
+            if(exceptionMap.size()>0) {
+                Iterator<ApiConfig> it = exceptionMap.keySet().iterator();
+                while(it.hasNext()) {
+                    ApiConfig c = it.next();
+                    Exception e = exceptionMap.get(c);
                     String message = "\n\nError retrieving jobs:\n\n" + e.getMessage();
-                    Utils.sendEmails(getConfig.error_email_from_address,
-                            getConfig.error_email_list,
-                            "GetJobs error for " + getConfig.name,
+                    Utils.sendEmails(c.error_email_from_address,
+                            c.error_email_list,
+                            "GetJobs error for " + c.name,
                             message);
-                    response.setContentType("text/html");
-                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                    response.getWriter().println(e.getMessage());
                 }
             }
             // assemble temp files in to 1, adding header and footer
@@ -87,7 +109,6 @@ public class GetJobsServlet extends HttpServlet {
                 fos.flush();
                 close(fos);
             }
-
             // pretty format the jobs
             String tempFile = Constants.XML_OUTPUT_DIRECTORY + "/" + Constants.TEMP_JOB_FILE_NAME;
             ProcessBuilder builder = new ProcessBuilder("python", "prettyprint.py", masterFileString, "utf-8");
@@ -104,12 +125,11 @@ public class GetJobsServlet extends HttpServlet {
             File dir = new File(Constants.XML_OUTPUT_DIRECTORY);
             File files[] = dir.listFiles();
             Arrays.sort(files, NameFileComparator.NAME_INSENSITIVE_REVERSE);
-            int preservFileCount = 20;
+            int preserveFileCount = 20;
             String pfcString = System.getenv("preserve_file_count");
             if (pfcString != null)
-                preservFileCount = Integer.parseInt(pfcString);
-
-            for (int i = files.length - 1; i > (preservFileCount - 1); i--) {
+                preserveFileCount = Integer.parseInt(pfcString);
+            for (int i = files.length - 1; i > (preserveFileCount - 1); i--) {
                 File f = files[i];
                 try {
                     // insurance that we don't delete latest file for some reason
@@ -120,11 +140,26 @@ public class GetJobsServlet extends HttpServlet {
                 }
             }
             //
-            System.out.println("getJobs() took " + (System.currentTimeMillis() - start) + "ms");
+            Long duration = System.currentTimeMillis() - start;
+            System.out.println("getJobs() took " + duration + "ms");
+            System.out.println("using "+tpc+" download threads");
             // acknowledge to caller
             response.setContentType("text/html");
             response.setStatus(HttpServletResponse.SC_OK);
-            response.getWriter().println("<h1>Success!</h1>");
+            response.getWriter().println("getJobs() took " + duration + "ms");
+            response.getWriter().println("using "+tpc+" download threads");
+            if(exceptionMap.size() > 0) {
+                response.getWriter().println("<h1>Errors!</h1>");
+                Iterator<ApiConfig> it = exceptionMap.keySet().iterator();
+                while(it.hasNext()) {
+                    ApiConfig c = it.next();
+                    Exception e = exceptionMap.get(c);
+                    String message = "Error retrieving jobs for "+c.name+": " + e.getMessage()+"<br>";
+                    response.getWriter().println(message);
+                }
+            } else {
+                response.getWriter().println("<h1>Success!</h1>");
+            }
         }
     }
 
