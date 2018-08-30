@@ -58,7 +58,7 @@ public class GetJobsServlet extends HttpServlet {
                 ApiConfig getConfig = null;
                 getConfig = configs[i];
                 // get the jobs
-                Runnable worker = new ApiWorker(getConfig,exceptionMap);
+                Runnable worker = new ApiWorker(getConfig,exceptionMap, false);
                 executor.execute(worker);
             }
             // shutdown threadpool

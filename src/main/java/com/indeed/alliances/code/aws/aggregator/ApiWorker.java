@@ -12,16 +12,22 @@ public class ApiWorker implements Runnable {
 
     private ApiConfig config;
     private Map<ApiConfig,Exception> exceptionMap;
+    private Boolean checkHealth;
 
-    public ApiWorker(ApiConfig config, Map<ApiConfig,Exception> exceptionMap) {
+    public ApiWorker(ApiConfig config, Map<ApiConfig,Exception> exceptionMap, Boolean checkHealth) {
         this.config = config;
         this.exceptionMap = exceptionMap;
+        this.checkHealth = checkHealth;
     }
 
     @Override
     public void run() {
         try {
-            GetJobsManager.getJobs(this.config);
+            if(checkHealth) {
+                ApiClient.checkHealth(this.config);
+            } else {
+                GetJobsManager.getJobs(this.config);
+            }
         } catch (Exception e) {
             // add the exception to the map
             synchronized(exceptionMap) {
