@@ -14,13 +14,19 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import com.google.gson.Gson;
-import org.apache.commons.io.comparator.NameFileComparator;
+import org.apache.commons.io.FileUtils;
 
 /**
  * Uses environment variable "preserve_file_count"
  * which is the number of files in the XML output directory to preserve
  * i.e., it it's set to 20, and there are 21 files, the oldest file will be deleted.
  * The default is 20.
+ *
+ * Uses environment variable "max_workingfile_age" which is the max age, in minutes, that the
+ * working file from a given API endpoint is considered viable. This comes in to play when
+ * any given API endpoint fails for any reason. If there exists a previous working file for
+ * that endpoint, and it is younger than max_workingfile_age, it will still be aggregated in
+ * to the master XML file. The default is 70 minutes.
  *
  * Written by George Ludwig, Solutions Architect, Global Alliances at Indeed
  * June 2018
@@ -87,14 +93,24 @@ public class GetJobsServlet extends HttpServlet {
                 fos.write("<?xml version=\"1.0\" encoding=\"utf-8\"?><JobPostings>".getBytes());
                 for (int i = 0; i < configs.length; i++) {
                     assembleConfig = configs[i];
-                    InputStream in = new FileInputStream(assembleConfig.xml_output_directory + "/" + assembleConfig.xml_output_filename);
-                    byte[] buffer = new byte[1 << 20];  // loads 1 MB of the file
-                    int count;
-                    while ((count = in.read(buffer)) != -1) {
-                        fos.write(buffer, 0, count);
+                    // only use the working file if it's young enough
+                    if(checkFileDate(assembleConfig)) {
+                        InputStream in = new FileInputStream(assembleConfig.xml_output_directory + "/" + assembleConfig.xml_output_filename);
+                        byte[] buffer = new byte[1 << 20];  // loads 1 MB of the file
+                        int count;
+                        while ((count = in.read(buffer)) != -1) {
+                            fos.write(buffer, 0, count);
+                        }
+                        fos.flush();
+                        close(in);
+                    } else {
+                        // set the working file length to 0 because it is too old to be used
+                        String workingFile = assembleConfig.xml_output_directory + "/" + assembleConfig.xml_output_filename;
+                        File f = new File(workingFile);
+                        FileWriter fw = new FileWriter(f);
+                        fw.flush();
+                        fw.close();
                     }
-                    fos.flush();
-                    close(in);
                 }
                 fos.write("</JobPostings>".getBytes());
             } catch (Exception e) {
@@ -118,28 +134,27 @@ public class GetJobsServlet extends HttpServlet {
             if (path == null) {
                 throw new ServletException("unable to copy time-stamped file");
             }
-            // clear old files
             // sort file list
             File dir = new File(Constants.XML_OUTPUT_DIRECTORY);
             File files[] = dir.listFiles();
             Arrays.sort(files, new Comparator<File>() {
                 public int compare(File o1, File o2) {
-                    if ((o1).lastModified() > (o2).lastModified()) {
-                        return -1;
-                    } else if ((o1).lastModified() < (o2).lastModified()) {
-                        return +1;
-                    } else {
-                        return 0;
-                    }
+                if ((o1).lastModified() > (o2).lastModified()) {
+                    return -1;
+                } else if ((o1).lastModified() < (o2).lastModified()) {
+                    return +1;
+                } else {
+                    return 0;
+                }
                 }
             });
-            // Arrays.sort(files, NameFileComparator.NAME_INSENSITIVE_REVERSE);
             int preserveFileCount = 20;
             String pfcString = System.getenv("preserve_file_count");
             if (pfcString != null)
                 preserveFileCount = Integer.parseInt(pfcString);
             // make sure we keep the latest working files as well as pre-DT-stamped file
             preserveFileCount += configs.length + 1;
+            // clear old files
             for (int i = files.length - 1; i > (preserveFileCount - 1); i--) {
                 File f = files[i];
                 try {
@@ -181,5 +196,23 @@ public class GetJobsServlet extends HttpServlet {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static Long max_age = null;
+    private boolean checkFileDate(ApiConfig gjConfig) {
+        if(max_age==null) {
+            try {
+                String s = System.getenv("max_workingfile_age"); // age in minutes
+                max_age = Long.parseLong(s);
+                max_age = max_age * 60000; // translate mins to millis
+            } catch(Exception e) {
+                max_age = 4200000L; // 70 mins in millis
+            }
+        }
+        File f = FileUtils.getFile(gjConfig.xml_output_directory + "/" + gjConfig.xml_output_filename);
+        if(System.currentTimeMillis()-f.lastModified()>max_age) {
+            return false;
+        }
+        return true;
     }
 }

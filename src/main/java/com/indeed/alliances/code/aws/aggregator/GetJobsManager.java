@@ -1,5 +1,7 @@
 package com.indeed.alliances.code.aws.aggregator;
 
+import org.apache.commons.io.FileUtils;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -14,30 +16,44 @@ import java.io.FileWriter;
  */
 public class GetJobsManager {
 
-    /**
-     * Get all jobs from the endpoint represented by the ApiConfig.
-     * @param config
-     * @throws Exception
-     */
     public static void getJobs(ApiConfig config) throws Exception {
-        // create tempfile
-        String tempFile = config.xml_output_directory + "/" + config.xml_output_filename;
-        File f = new File(tempFile);
-        f.createNewFile();
-        BufferedWriter writer = new BufferedWriter(new FileWriter(f));
-        boolean done = false;
+        BufferedWriter writer = null;
         try {
-            // get the jobs... returns 1 if we got all jobs, else the page at which it stopped
-            String jobs = ApiClient.getJobs(config);
-            writer.write(jobs.toCharArray());
-            // cleanup
+            // create tempfile
+            String outFile = config.xml_output_directory + "/" + config.xml_output_filename;
+            String tmpFile = outFile + ".tmp";
+            File f = new File(tmpFile);
+            f.createNewFile();
+            writer = new BufferedWriter(new FileWriter(f));
+            boolean done = false;
+            while (!done) {
+                try {
+                    // get the jobs... returns true if we got all jobs
+                    // the config object should have all the fields required
+                    // to walk through all the calls required to get all the jobs
+                    done = ApiClient.getJobs(config, writer);
+                } catch (Exception e) {
+                    // cleanup
+                    writer.flush();
+                    writer.close();
+                    throw new Exception("Exception thrown getting jobs for " + config.name + " original exception message was: " + e.getMessage());
+                }
+            }
             writer.flush();
             writer.close();
-        } catch (Exception e) {
-            // cleanup
-            writer.flush();
-            writer.close();
-            throw new Exception("Exception thrown getting jobs for "+config.name+" original exception message was: "+e.getMessage());
+            // delete old file
+            File old = new File(outFile);
+            if(old.exists()) {
+                old.delete();
+            }
+            // move tmp file to outfile
+            FileUtils.moveFile(FileUtils.getFile(tmpFile),FileUtils.getFile(outFile));
+        } finally {
+            // cleanup tmp file in case of exception
+            try {
+                writer.flush();
+                writer.close();
+            } catch(Exception e) {}
         }
     }
 }

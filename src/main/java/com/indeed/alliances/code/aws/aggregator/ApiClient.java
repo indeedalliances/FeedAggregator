@@ -20,10 +20,10 @@ public class ApiClient {
      * represented by the ApiConfig.
      *
      * @param apiConfig
-     * @return
+     * @return true if all jobs were retrieved
      * @throws Exception
      */
-    public static String getJobs(ApiConfig apiConfig) throws Exception {
+    public static boolean getJobs(ApiConfig apiConfig, Writer writer) throws Exception {
         URL url = new URL(apiConfig.url);
         // create connection
         HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
@@ -44,8 +44,9 @@ public class ApiClient {
         urlConnection.disconnect();
         String result = builder.toString();
         // TODO if the String result need to be cleaned, i.e. header/footer removal etc.
-        // it would be done here before returning
-        return result;
+        // it would be done here before writing to buffer
+        writer.write(result.toCharArray());
+        return true;
     }
 
     /**
